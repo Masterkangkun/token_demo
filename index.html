@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no" />
+    <title>token demo</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.13/esri/css/esri.css">
+    <style>
+        html,
+        body,
+        #map {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://js.arcgis.com/3.24/"></script>
+    <script>
+        dojo.require("dijit.layout.BorderContainer");
+        dojo.require("dijit.layout.ContentPane");
+        dojo.require("esri.map");
+
+        var map;
+
+        /**
+         * 初始化地图，并将token应用于安全服务
+         * @param token {string} 获取到的token
+         */
+        function init(token) {
+
+            // 安全服务的地址+token
+            const layerUrl = 'http://124.205.245.115:9002/OneMapServer/rest/services/HLJ/MapServer' + '?token=' + token;
+            console.log(layerUrl);
+
+            map = new esri.Map("map");
+
+            var layer = new esri.layers.ArcGISDynamicMapServiceLayer(
+                layerUrl
+            );
+            map.addLayer(layer);
+
+            // 处理地图resize事件
+            var resizeTimer;
+            dojo.connect(map, 'onLoad', function (theMap) {
+                dojo.connect(dijit.byId('map'), 'resize', function () {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(function () {
+                        map.resize();
+                        map.reposition();
+                    }, 500);
+                });
+            });
+        }
+
+
+        /**
+         * 获取token
+         */
+        function fetchToken() {
+            // token服务的地址
+            const tokenServerUrl = "http://124.205.245.115:9002/RemoteTokenServer"
+            const username = 'super';  // 用户名
+            const password = 'Admin123';  // 密码
+            const clientid = 'ref.token_demo';  // 有2种认证方式，referrer和ip，web页面适合使用referrer方式。生产环境中，需要把localhost替换为生产环境的域名
+            const expiration = 30; // token的有效时间，单位是分钟
+
+            // 使用jquery发送请求，获取token，存在跨域的问题，所以以jsonp方式发送请求
+            $.ajax({
+                url: tokenServerUrl,
+                jsonp: "callback",
+                dataType: "jsonp",
+                data: {
+                    request: "getToken",
+                    username: username,
+                    password: password,
+                    clientid: clientid,
+                    expiration: expiration,
+                    format: "json"
+                }
+            }).then(function (data) {
+                // 返回的数据中，data.token即为认证的token
+                init(data.token)
+            });
+        }
+
+        dojo.addOnLoad(fetchToken);
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+</body>
+
+</html>
